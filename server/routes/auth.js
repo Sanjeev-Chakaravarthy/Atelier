@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { register, login, getMe, updateProfile, changePassword, forgotPassword, resetPassword, googleLogin, googleCallback } = require('../controllers/authController');
+const { register, login, getMe, updateProfile, changePassword, forgotPassword, resetPassword, googleLogin, googleRedirect, googleCallback } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -16,10 +16,12 @@ router.post('/login', [
   body('password').notEmpty().withMessage('Password is required'),
 ], login);
 
-router.post('/google-login', googleLogin);
-router.post('/google', googleLogin);
-router.post('/google/callback', googleCallback);
+// Google OAuth — server-side redirect flow
+router.get('/google', googleRedirect);
 router.get('/google/callback', googleCallback);
+
+// Google OAuth — GSI popup flow (frontend POST)
+router.post('/google-login', googleLogin);
 
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);

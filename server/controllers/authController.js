@@ -301,34 +301,83 @@ exports.googleLogin = async (req, res) => {
   }
 };
 
-// @desc  Google OAuth Callback
-// @route GET/POST /api/auth/google/callback
+// @desc  Google OAuth Redirect — initiates the server-side OAuth flow
+// @route GET /api/auth/google
+exports.googleRedirect = (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const protocol = req.get('x-forwarded-proto') || req.protocol;
+  const callbackUrl = `${protocol}://${req.get('host')}/api/auth/google/callback`;
+  
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: callbackUrl,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'offline',
+    prompt: 'select_account',
+  });
+
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  console.log('Google OAuth redirect → callbackUrl:', callbackUrl);
+  res.redirect(googleAuthUrl);
+};
+
+// @desc  Google OAuth Callback — exchanges auth code for tokens, logs user in
+// @route GET /api/auth/google/callback
 exports.googleCallback = async (req, res) => {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
   try {
-    const credential = req.body?.credential || req.query?.credential || req.body?.id_token || req.query?.id_token;
-    if (!credential) {
-      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=no_credential`);
+    const { code } = req.query;
+    if (!code) {
+      console.error('Google callback: no authorization code received');
+      return res.redirect(`${clientUrl}/login?error=no_code`);
     }
 
-    const payload = jwt.decode(credential);
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const callbackUrl = `${protocol}://${req.get('host')}/api/auth/google/callback`;
+
+    // Exchange authorization code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: callbackUrl,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (tokenData.error) {
+      console.error('Google token exchange error:', tokenData);
+      return res.redirect(`${clientUrl}/login?error=token_exchange_failed`);
+    }
+
+    // Decode the id_token to get user info
+    const payload = jwt.decode(tokenData.id_token);
     if (!payload || !payload.email) {
-      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=invalid_token`);
+      console.error('Google callback: invalid id_token payload');
+      return res.redirect(`${clientUrl}/login?error=invalid_token`);
     }
 
+    // Find or create user
     let user = await User.findOne({ email: payload.email.toLowerCase() });
-    let isModified = false;
 
     if (!user) {
-      const crypto = require('crypto');
       const randomPassword = crypto.randomBytes(20).toString('hex');
       user = await User.create({
         name: payload.name || payload.email.split('@')[0],
         email: payload.email.toLowerCase(),
         avatar: payload.picture || '',
         defaultAvatar: payload.picture || '',
-        password: randomPassword
+        password: randomPassword,
       });
     } else {
+      let isModified = false;
       if (!user.avatar && payload.picture) {
         user.avatar = payload.picture;
         isModified = true;
@@ -344,7 +393,7 @@ exports.googleCallback = async (req, res) => {
 
     const localToken = generateToken(user._id);
 
-    const redirectUrl = new URL(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login`);
+    const redirectUrl = new URL(`${clientUrl}/login`);
     redirectUrl.searchParams.set('token', localToken);
     redirectUrl.searchParams.set('user', JSON.stringify({
       id: user._id,
@@ -360,7 +409,7 @@ exports.googleCallback = async (req, res) => {
 
     res.redirect(redirectUrl.toString());
   } catch (err) {
-    console.error('Google callback redirect error:', err);
-    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=server_error`);
+    console.error('Google callback error:', err);
+    res.redirect(`${clientUrl}/login?error=server_error`);
   }
 };
