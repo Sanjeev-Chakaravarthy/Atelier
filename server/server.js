@@ -29,6 +29,35 @@ if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// DB Connection Caching for Serverless
+let cachedDbConnection = null;
+const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+  if (cachedDbConnection) {
+    return cachedDbConnection;
+  }
+  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/nexus-task-os';
+  cachedDbConnection = await mongoose.connect(MONGODB_URI);
+  console.log('✅ MongoDB connected (serverless)');
+  return cachedDbConnection;
+};
+
+// Database connection middleware for serverless environment
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('❌ Serverless MongoDB connection failed:', err.message);
+    if (global.logToDB) {
+      global.logToDB('DB_CONNECTION_ERROR', { error: err.message, stack: err.stack });
+    }
+    res.status(503).json({ message: 'Database connection failed' });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -126,24 +155,8 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
 });
 
-// DB Connection
+// Local listener for non-Vercel environments
 const PORT = process.env.PORT || 5001;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/nexus-task-os';
-
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected');
-    if (global.logToDB) {
-      global.logToDB('SERVER_STARTUP', { message: 'Server started and MongoDB connected successfully.' });
-    }
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection failed:', err.message);
-    if (global.logToDB) {
-      global.logToDB('DB_CONNECTION_ERROR', { error: err.message, stack: err.stack });
-    }
-  });
 
 if (!process.env.VERCEL) {
   app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
