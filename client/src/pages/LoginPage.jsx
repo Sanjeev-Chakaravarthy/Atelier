@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
     // Load Google GSI Client Script
@@ -41,6 +42,7 @@ export default function LoginPage() {
     document.body.appendChild(script);
 
     const handleGoogleCredentialResponse = async (response) => {
+      setIsGoogleLoading(true);
       try {
         const res = await authAPI.googleLogin({ token: response.credential });
         if (res.data && res.data.success) {
@@ -50,6 +52,7 @@ export default function LoginPage() {
         }
       } catch (err) {
         toast.error(err.response?.data?.message || 'Google authentication failed');
+        setIsGoogleLoading(false);
       }
     };
 
@@ -211,7 +214,14 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <Card className="p-8 border border-black/[0.08] bg-surface-lowest shadow-card">
+          <Card className="p-8 border border-black/[0.08] bg-surface-lowest shadow-card relative overflow-hidden">
+            {isGoogleLoading && (
+              <div className="absolute inset-0 bg-surface-lowest/80 backdrop-blur-sm z-50 rounded-xl flex flex-col items-center justify-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 border-accent-olive border-t-transparent animate-spin" />
+                <span className="text-body-sm font-semibold text-primary">Authenticating with Google...</span>
+                <span className="text-[10px] text-on-surface-var/60">Verifying security token</span>
+              </div>
+            )}
             
             {/* Header */}
             <div className="mb-8">
