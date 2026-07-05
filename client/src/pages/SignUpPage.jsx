@@ -62,17 +62,23 @@ export default function SignUpPage() {
     let isMounted = true;
     let intervalId = null;
 
+    console.log('SignUpPage: Starting Google OAuth script loader effect.');
+
     const handleGoogleCredentialResponse = async (response) => {
       if (!isMounted) return;
+      console.log('SignUpPage: Received Google Credential token response.');
       setIsGoogleLoading(true);
       try {
+        console.log('SignUpPage: Forwarding credential to backend Google login route.');
         const res = await authAPI.googleLogin({ token: response.credential });
+        console.log('SignUpPage: Backend Google login response received. Success:', res?.data?.success);
         if (isMounted && res.data && res.data.success) {
           loginWithToken(res.data.token, res.data.user);
           toast.success('Successfully authenticated with Google!');
           navigate('/dashboard');
         }
       } catch (err) {
+        console.error('SignUpPage: Backend Google login request failed.', err);
         if (isMounted) {
           toast.error(err.response?.data?.message || 'Google authentication failed');
           setIsGoogleLoading(false);
@@ -82,27 +88,42 @@ export default function SignUpPage() {
 
     const renderGoogleButton = () => {
       const btnElement = document.getElementById('google-signup-btn');
+      console.log('SignUpPage: renderGoogleButton check. btnElement found:', !!btnElement, 'window.google found:', !!window.google);
       if (window.google && btnElement) {
         const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '634188935234-vk4f32hhuonhjomn9bll58tqbi2qucck.apps.googleusercontent.com';
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleGoogleCredentialResponse,
-        });
-        window.google.accounts.id.renderButton(
-          btnElement,
-          { theme: 'outline', size: 'large', width: '380' }
-        );
-        return true;
+        console.log('SignUpPage: Initializing Google Identity with Client ID:', googleClientId);
+        
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleGoogleCredentialResponse,
+            ux_mode: 'popup', // explicitly enforce popup mode
+            cancel_on_tap_outside: true
+          });
+          
+          console.log('SignUpPage: Rendering Google Identity Button on DOM element.');
+          window.google.accounts.id.renderButton(
+            btnElement,
+            { theme: 'outline', size: 'large', width: '380' }
+          );
+          console.log('SignUpPage: Google Identity Button rendered successfully.');
+          return true;
+        } catch (err) {
+          console.error('SignUpPage: Error rendering Google button:', err);
+        }
       }
       return false;
     };
 
     const handleScriptLoad = () => {
       if (!isMounted) return;
+      console.log('SignUpPage: Google GSI Script loaded.');
       const rendered = renderGoogleButton();
       if (!rendered) {
+        console.log('SignUpPage: DOM element not ready on script load, setting poll interval.');
         intervalId = setInterval(() => {
           if (renderGoogleButton()) {
+            console.log('SignUpPage: Google button rendered during script load poll. Clearing interval.');
             clearInterval(intervalId);
           }
         }, 100);
@@ -110,21 +131,27 @@ export default function SignUpPage() {
     };
 
     if (!script) {
+      console.log('SignUpPage: Creating Google GSI script element.');
       script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
       document.body.appendChild(script);
+    } else {
+      console.log('SignUpPage: Google GSI script already present in document.');
     }
 
     script.addEventListener('load', handleScriptLoad);
 
     // If script is already loaded
     if (window.google) {
+      console.log('SignUpPage: window.google already defined on mount.');
       const rendered = renderGoogleButton();
       if (!rendered) {
+        console.log('SignUpPage: DOM element not ready on mount, setting poll interval.');
         intervalId = setInterval(() => {
           if (renderGoogleButton()) {
+            console.log('SignUpPage: Google button rendered during mount poll. Clearing interval.');
             clearInterval(intervalId);
           }
         }, 100);
@@ -132,6 +159,7 @@ export default function SignUpPage() {
     }
 
     return () => {
+      console.log('SignUpPage: Cleaning up Google OAuth script loader effect.');
       isMounted = false;
       if (script) {
         script.removeEventListener('load', handleScriptLoad);
