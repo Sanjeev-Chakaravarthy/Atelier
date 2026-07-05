@@ -1,0 +1,13 @@
+{
+  "name": "nexus-task-os-root",
+  "version": "1.0.0",
+  "description": "Nexus Task OS — The workspace where execution becomes effortless. MERN Stack project.",
+  "scripts": {
+    "install-all": "npm install && npm install --prefix client && npm install --prefix server",
+    "dev": "npx concurrently -n \"server,client\" -c \"cyan,magenta\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "start": "npx concurrently -n \"server,client\" -c \"cyan,magenta\" \"npm start --prefix server\" \"npm run build --prefix client && npm run preview --prefix client\""
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

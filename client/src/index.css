@@ -1,0 +1,411 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── ROOT DESIGN TOKENS ─── */
+:root {
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Dynamic Accent Colors (RGB representation for Tailwind opacity mapping) */
+  --color-accent: 102, 122, 82;        /* olive */
+  --color-accent-light: 119, 139, 98;  /* olive-light */
+  --color-accent-bg: 230, 232, 227;     /* olive-bg */
+
+  /* Dynamic Theme Variables (Default Atelier Minimal Light Mode) */
+  --color-surface-bg: 250, 249, 245;       /* #faf9f5 */
+  --color-surface-dim: 219, 218, 214;      /* #dbdad6 */
+  --color-surface-bright: 250, 249, 245;   /* #faf9f5 */
+  --color-surface-lowest: 255, 255, 255;   /* #ffffff */
+  --color-surface-low: 245, 244, 240;      /* #f5f4f0 */
+  --color-surface-container: 239, 238, 234; /* #efeeea */
+  --color-surface-high: 233, 232, 228;     /* #e9e8e4 */
+  --color-surface-highest: 227, 226, 223;  /* #e3e2df */
+  --color-on-surface: 27, 28, 26;          /* #1b1c1a */
+  --color-on-surface-var: 94, 94, 94;      /* #5e5e5e */
+  --color-black: 0, 0, 0;                  /* Black */
+  
+  --color-primary: 3, 3, 4;                /* #030304 */
+  --color-primary-container: 29, 29, 31;   /* #1d1d1f */
+}
+
+.dark {
+  /* Dynamic Theme Variables (Deep Space Dark Mode) */
+  --color-surface-bg: 11, 19, 38;          /* #0b1326 */
+  --color-surface-dim: 16, 26, 50;         /* #101a32 */
+  --color-surface-bright: 11, 19, 38;      /* #0b1326 */
+  --color-surface-lowest: 23, 31, 51;      /* #171f33 */
+  --color-surface-low: 28, 37, 60;         /* #1c253c */
+  --color-surface-container: 33, 44, 70;   /* #212c46 */
+  --color-surface-high: 40, 52, 82;        /* #283452 */
+  --color-surface-highest: 48, 61, 95;     /* #303d5f */
+  --color-on-surface: 241, 243, 245;       /* #f1f3f5 */
+  --color-on-surface-var: 178, 190, 205;   /* #b2becd */
+  --color-black: 255, 255, 255;            /* Map to White in Dark Mode */
+  
+  --color-primary: 255, 255, 255;          /* #ffffff */
+  --color-primary-container: 33, 44, 70;   /* #212c46 */
+}
+
+/* Dynamic Fallbacks & Catch-all overrides for Dark Mode */
+.dark .bg-white {
+  background-color: rgb(var(--color-surface-lowest)) !important;
+}
+.dark .text-black {
+  color: rgb(var(--color-on-surface)) !important;
+}
+.dark .border-black\/5, .dark .border-black\/10, .dark .border-black\/15 {
+  border-color: rgba(var(--color-black), 0.08) !important;
+}
+
+/* ─── GLOBAL BASE ─── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-surface text-on-surface font-sans;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-outline/20 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-outline/40; }
+
+  /* Selection */
+  ::selection { @apply bg-accent-olive/20 text-on-surface; }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 1.5px solid theme('colors.accent.olive');
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(102, 122, 82, 0.1);
+  }
+}
+
+/* ─── COMPONENT UTILITIES ─── */
+@layer components {
+  /* Cards */
+  .card {
+    @apply bg-surface-lowest border border-black/[0.08] rounded-xl shadow-card transition-all duration-200;
+  }
+  .card-hover {
+    @apply card;
+  }
+  .card-hover:hover {
+    @apply shadow-card-hover -translate-y-0.5 border-black/15;
+  }
+
+  /* Glass/Bento styles matching Stitch */
+  .glass {
+    @apply border border-black/[0.08] rounded-xl bg-surface-lowest shadow-card;
+  }
+  
+  .glass-card {
+    @apply card p-6 relative overflow-hidden;
+  }
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: theme('spacing.lg');
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium transition-all duration-200
+           rounded-md focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed
+           select-none whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply btn bg-primary-container text-white shadow-sm hover:opacity-90
+           active:scale-[0.98] px-4 py-2.5 text-body-sm;
+  }
+  .btn-secondary {
+    @apply btn bg-surface-lowest border border-black/10 text-on-surface hover:bg-surface-low
+           hover:border-black/20 active:scale-[0.98] px-4 py-2.5 text-body-sm;
+  }
+  .btn-ghost {
+    @apply btn text-on-surface-var hover:text-on-surface hover:bg-surface-low
+           active:scale-[0.98] px-3 py-2 text-body-sm;
+  }
+  .btn-danger {
+    @apply btn bg-error/10 border border-error/20 text-error hover:bg-error/20
+           active:scale-[0.98] px-4 py-2.5 text-body-sm;
+  }
+  .btn-icon {
+    @apply btn text-on-surface-var hover:text-on-surface hover:bg-surface-low
+           rounded-md p-2 active:scale-95;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-label-sm;
+  }
+  .btn-lg {
+    @apply px-6 py-3.5 text-body-md;
+  }
+
+  /* Inputs */
+  .input-base {
+    @apply w-full bg-surface-lowest border border-black/[0.08] rounded text-on-surface
+           placeholder:text-on-surface-var/50 px-3 py-2.5 text-body-sm
+           focus:outline-none focus:border-accent-olive focus:shadow-input
+           transition-all duration-200;
+  }
+  .select-base {
+    @apply input-base pr-10 cursor-pointer appearance-none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23777c86'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
+  }
+  .dark .select-base {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a3a7b0'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  }
+
+  /* Badge / Pill */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-semibold uppercase tracking-wider;
+  }
+
+  /* Skeleton */
+  .skeleton {
+    @apply bg-surface-high rounded animate-pulse;
+    background: linear-gradient(90deg, #efeeea 25%, #e3e2df 50%, #efeeea 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  /* Sidebar navigation items */
+  .sidebar-item {
+    @apply relative flex items-center gap-3 px-4 py-2.5 rounded-lg text-label-sm text-on-surface-var
+           transition-all duration-200 cursor-pointer select-none;
+  }
+  .sidebar-item:hover {
+    @apply bg-surface-container text-on-surface;
+  }
+  .sidebar-item.active {
+    @apply bg-surface-container text-on-surface font-semibold;
+  }
+  .sidebar-item.active::before {
+    content: '';
+    @apply absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-accent-olive rounded-r-full;
+  }
+
+  /* Priority chips */
+  .priority-urgent {
+    @apply badge bg-error/10 text-error border border-error/20;
+  }
+  .priority-high {
+    @apply badge bg-tertiary/10 text-tertiary border border-tertiary/20;
+  }
+  .priority-medium {
+    @apply badge bg-accent-olive/10 text-accent-olive border border-accent-olive/20;
+  }
+  .priority-low {
+    @apply badge bg-on-surface-var/10 text-on-surface-var border border-black/10;
+  }
+
+  /* Status chips */
+  .status-todo {
+    @apply badge bg-on-surface-var/10 text-on-surface-var border border-black/10;
+  }
+  .status-in-progress {
+    @apply badge bg-accent-olive/15 text-accent-olive border border-accent-olive/20;
+  }
+  .status-review {
+    @apply badge bg-primary/10 text-primary border border-black/15;
+  }
+  .status-done {
+    @apply badge bg-accent-olive/10 text-accent-olive border border-accent-olive/20;
+  }
+
+  /* Page header */
+  .page-header {
+    @apply flex items-center justify-between mb-8 pb-6 border-b border-black/[0.06];
+  }
+
+  /* Section heading */
+  .section-label {
+    @apply text-label-sm text-on-surface-var/60 uppercase tracking-widest mb-3;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-black/[0.06];
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply absolute z-50 px-2.5 py-1.5 bg-surface-highest border border-black/10
+           text-label-sm text-on-surface rounded shadow-modal pointer-events-none
+           whitespace-nowrap opacity-0 scale-95 transition-all duration-150;
+  }
+
+  /* Chart container */
+  .chart-container {
+    @apply card p-6;
+  }
+
+  /* Drag handle */
+  .drag-handle {
+    @apply cursor-grab text-on-surface-var/40 hover:text-on-surface-var transition-colors;
+  }
+  .drag-handle:active { cursor: grabbing; }
+}
+
+/* ─── UTILITIES ─── */
+@layer utilities {
+  .text-gradient {
+    @apply text-primary;
+  }
+  .border-gradient {
+    @apply border border-black/[0.08];
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Animation helpers */
+  .animate-in { animation: slideUp 0.3s ease-out both; }
+  .animate-in-delay-1 { animation-delay: 0.05s; }
+  .animate-in-delay-2 { animation-delay: 0.1s; }
+  .animate-in-delay-3 { animation-delay: 0.15s; }
+  .animate-in-delay-4 { animation-delay: 0.2s; }
+
+  /* Prose warm minimal */
+  .prose-nexus {
+    @apply text-on-surface-var leading-relaxed;
+  }
+  .prose-nexus h1, .prose-nexus h2, .prose-nexus h3 {
+    @apply text-on-surface font-semibold;
+  }
+}
+
+/* ─── FRAMER MOTION HELPERS ─── */
+.page-transition { will-change: transform, opacity; }
+
+/* ─── TIPTAP EDITOR ─── */
+.ProseMirror {
+  @apply outline-none min-h-[120px] text-body-md text-on-surface-var leading-relaxed;
+}
+.ProseMirror p { @apply mb-3; }
+.ProseMirror ul, .ProseMirror ol { @apply pl-5 mb-3; }
+.ProseMirror li { @apply mb-1; }
+.ProseMirror strong { @apply text-on-surface font-semibold; }
+.ProseMirror em { @apply italic; }
+.ProseMirror code { @apply bg-surface-high px-1.5 py-0.5 rounded text-primary font-mono text-sm; }
+.ProseMirror blockquote {
+  @apply border-l-2 border-accent-olive/40 pl-4 italic text-on-surface-var/70 my-3;
+}
+.ProseMirror h1 { @apply text-headline-md text-on-surface mb-2 mt-4; }
+.ProseMirror h2 { @apply text-headline-sm text-on-surface mb-2 mt-3; }
+.ProseMirror h3 { @apply text-body-lg font-semibold text-on-surface mb-1 mt-3; }
+.ProseMirror p.is-empty::before {
+  content: attr(data-placeholder);
+  @apply text-on-surface-var/40 pointer-events-none float-left h-0;
+}
+
+/* ─── REACT BIG CALENDAR ─── */
+/* ─── REACT BIG CALENDAR ─── */
+.rbc-calendar {
+  @apply bg-transparent text-on-surface font-sans w-full;
+}
+.rbc-month-view, .rbc-time-view {
+  @apply border border-black/[0.08] dark:border-white/[0.08] rounded-2xl overflow-hidden bg-surface-lowest shadow-sm !important;
+}
+.rbc-header {
+  @apply bg-surface-low/80 border-b border-black/[0.08] dark:border-white/[0.08] text-label-xs font-bold text-on-surface-var/80 py-4 uppercase tracking-widest text-center !important;
+}
+.rbc-header + .rbc-header {
+  @apply border-l border-black/[0.08] dark:border-white/[0.08] !important;
+}
+.rbc-day-bg {
+  @apply border-black/[0.05] dark:border-white/[0.05] transition-colors duration-200 hover:bg-accent-olive/[0.02] dark:hover:bg-accent-olive/[0.03];
+}
+.rbc-day-bg + .rbc-day-bg {
+  @apply border-l border-black/[0.05] dark:border-white/[0.05];
+}
+.rbc-month-row {
+  @apply border-b border-black/[0.05] dark:border-white/[0.05] !important;
+}
+.rbc-month-row + .rbc-month-row {
+  @apply border-t-0 !important;
+}
+.rbc-month-row:last-child {
+  @apply border-b-0 !important;
+}
+.rbc-off-range-bg {
+  @apply bg-surface-low/40 dark:bg-surface-low/20 opacity-50;
+}
+.rbc-today {
+  @apply bg-accent-olive/[0.04] dark:bg-accent-olive/[0.06] !important;
+}
+.rbc-event {
+  @apply p-0 border-none bg-transparent hover:z-10 focus:outline-none focus:ring-0 active:scale-[0.98] transition-transform !important;
+}
+.rbc-event.rbc-selected {
+  @apply bg-transparent !important;
+}
+.rbc-event-content {
+  @apply p-0 m-0 !important;
+}
+.rbc-show-more {
+  @apply text-accent-olive hover:text-primary transition-colors text-[10px] font-bold font-mono px-2.5 py-1 bg-surface-low/50 rounded-md mt-1 ml-1 hover:bg-surface-high/50;
+}
+.rbc-date-cell {
+  @apply text-label-sm font-semibold p-3 text-on-surface-var/60 text-right pr-4 pt-3 select-none;
+}
+.rbc-date-cell.rbc-now {
+  @apply text-primary font-bold;
+}
+.rbc-date-cell.rbc-now a {
+  @apply bg-accent-olive text-white dark:text-surface-lowest rounded-full w-6 h-6 inline-flex items-center justify-center font-bold text-center align-middle shadow-sm;
+}
+.rbc-date-cell a {
+  @apply hover:text-primary transition-colors hover:no-underline;
+}
+.rbc-time-slot {
+  @apply border-black/[0.04] dark:border-white/[0.04];
+}
+.rbc-timeslot-group {
+  @apply border-b border-black/[0.05] dark:border-white/[0.05] !important;
+}
+.rbc-time-content {
+  @apply border-t border-black/[0.08] dark:border-white/[0.08] !important;
+}
+.rbc-time-header {
+  @apply border-b border-black/[0.08] dark:border-white/[0.08] !important;
+}
+.rbc-current-time-indicator {
+  @apply bg-accent-olive;
+}
+.rbc-row-segment {
+  @apply px-1 py-0.5 !important;
+}
+
+/* ─── DRAG AND DROP ─── */
+.dnd-drag-overlay {
+  @apply card shadow-modal opacity-90 scale-105;
+}
+
+/* ─── TOAST ─── */
+.nexus-toast {
+  @apply card px-4 py-3 text-body-sm flex items-center gap-3 min-w-[280px] max-w-[400px];
+}

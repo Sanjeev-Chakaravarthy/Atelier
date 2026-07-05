@@ -1,0 +1,96 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        // Atelier / Aether — Premium Warm Minimal Palette from Stitch
+        surface: {
+          DEFAULT: 'rgba(var(--color-surface-bg), <alpha-value>)',
+          dim: 'rgba(var(--color-surface-dim), <alpha-value>)',
+          bright: 'rgba(var(--color-surface-bright), <alpha-value>)',
+          lowest: 'rgba(var(--color-surface-lowest), <alpha-value>)',
+          low: 'rgba(var(--color-surface-low), <alpha-value>)',
+          container: 'rgba(var(--color-surface-container), <alpha-value>)',
+          high: 'rgba(var(--color-surface-high), <alpha-value>)',
+          highest: 'rgba(var(--color-surface-highest), <alpha-value>)',
+        },
+        'on-surface': 'rgba(var(--color-on-surface), <alpha-value>)',
+        'on-surface-var': 'rgba(var(--color-on-surface-var), <alpha-value>)',
+        primary: {
+          DEFAULT: 'rgba(var(--color-primary), <alpha-value>)',
+          container: 'rgba(var(--color-primary-container), <alpha-value>)',
+          fixed: 'rgba(var(--color-primary), <alpha-value>)',
+          'fixed-dim': 'rgba(var(--color-primary-container), <alpha-value>)',
+        },
+        'on-primary': 'rgba(var(--color-surface-lowest), <alpha-value>)',
+        'on-primary-container': 'rgba(var(--color-on-surface-var), <alpha-value>)',
+        secondary: {
+          DEFAULT: '#5e5e5e',
+          container: '#e1dfdf',
+          'fixed-dim': '#c7c6c6',
+        },
+        tertiary: {
+          DEFAULT: '#010300',
+          container: '#112104',
+          fixed: '#d3eaba',
+          'fixed-dim': '#b8ce9f',
+        },
+        'accent-olive': 'rgba(var(--color-accent), <alpha-value>)',
+        'accent-olive-light': 'rgba(var(--color-accent-light), <alpha-value>)',
+        'accent-olive-bg': 'rgba(var(--color-accent-bg), <alpha-value>)',
+        black: 'rgba(var(--color-black), <alpha-value>)',
+        error: {
+          DEFAULT: '#ba1a1a',
+          container: '#ffdad6',
+        },
+        outline: {
+          DEFAULT: '#77767b',
+          variant: '#c7c6ca',
+        },
+        'border-subtle': 'rgba(var(--color-black), 0.08)',
+        'border-dark-subtle': 'rgba(var(--color-black), 0.08)',
+      },
+      fontFamily: {
+        sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Geist Mono', 'monospace'],
+      },
+      fontSize: {
+        'display-lg': ['3rem', { lineHeight: '3.5rem', letterSpacing: '-0.02em', fontWeight: '600' }],
+        'headline-lg': ['2rem', { lineHeight: '2.5rem', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'headline-md': ['1.25rem', { lineHeight: '1.75rem', fontWeight: '500' }],
+        'headline-sm': ['1.125rem', { lineHeight: '1.5rem', fontWeight: '600' }],
+        'body-lg': ['1rem', { lineHeight: '1.6rem', fontWeight: '400' }],
+        'body-md': ['0.875rem', { lineHeight: '1.5rem', fontWeight: '400' }],
+        'body-sm': ['0.75rem', { lineHeight: '1.4rem', fontWeight: '400' }],
+        'label-md': ['0.875rem', { lineHeight: '1.4rem', letterSpacing: '0.015em', fontWeight: '500' }],
+        'label-sm': ['0.75rem', { lineHeight: '1.4rem', letterSpacing: '0.02em', fontWeight: '500' }],
+        'label-xs': ['0.625rem', { lineHeight: '1.2rem', letterSpacing: '0.05em', fontWeight: '500' }],
+      },
+      borderRadius: {
+        sm: '4px',
+        DEFAULT: '8px',
+        md: '12px',
+        lg: '16px',
+        xl: '24px',
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.02)',
+        'card-hover': '0 4px 20px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04)',
+        glow: '0 0 12px rgba(var(--color-accent), 0.2)',
+        modal: '0 24px 64px -8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+        input: '0 0 0 3px rgba(var(--color-accent), 0.15)',
+      },
+      spacing: {
+        base: '4px',
+        gutter: '20px',
+        'margin-desktop': '48px',
+        'margin-mobile': '16px',
+        sidebar: '260px',
+        lg: '24px',
+      },
+    },
+  },
+  plugins: [],
+};
