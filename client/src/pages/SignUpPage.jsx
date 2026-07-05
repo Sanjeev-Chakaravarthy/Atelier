@@ -37,6 +37,27 @@ export default function SignUpPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    const urlUser = params.get('user');
+    const error = params.get('error');
+    
+    if (error) {
+      toast.error(error === 'no_credential' ? 'No credential received from Google' : 'Google authentication failed');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlToken && urlUser) {
+      try {
+        loginWithToken(urlToken, JSON.parse(urlUser));
+        toast.success('Successfully authenticated with Google!');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        navigate('/dashboard');
+      } catch (e) {
+        toast.error('Authentication parsing failed');
+      }
+    }
+  }, [loginWithToken, navigate]);
+
+  useEffect(() => {
     let script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
     let isMounted = true;
     let intervalId = null;

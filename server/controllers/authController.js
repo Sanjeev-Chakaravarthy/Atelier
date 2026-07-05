@@ -300,3 +300,67 @@ exports.googleLogin = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// @desc  Google OAuth Callback
+// @route GET/POST /api/auth/google/callback
+exports.googleCallback = async (req, res) => {
+  try {
+    const credential = req.body?.credential || req.query?.credential || req.body?.id_token || req.query?.id_token;
+    if (!credential) {
+      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=no_credential`);
+    }
+
+    const payload = jwt.decode(credential);
+    if (!payload || !payload.email) {
+      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=invalid_token`);
+    }
+
+    let user = await User.findOne({ email: payload.email.toLowerCase() });
+    let isModified = false;
+
+    if (!user) {
+      const crypto = require('crypto');
+      const randomPassword = crypto.randomBytes(20).toString('hex');
+      user = await User.create({
+        name: payload.name || payload.email.split('@')[0],
+        email: payload.email.toLowerCase(),
+        avatar: payload.picture || '',
+        defaultAvatar: payload.picture || '',
+        password: randomPassword
+      });
+    } else {
+      if (!user.avatar && payload.picture) {
+        user.avatar = payload.picture;
+        isModified = true;
+      }
+      if (!user.defaultAvatar || user.defaultAvatar.includes('gravatar.com')) {
+        user.defaultAvatar = payload.picture;
+        isModified = true;
+      }
+      if (isModified) {
+        await user.save();
+      }
+    }
+
+    const localToken = generateToken(user._id);
+
+    const redirectUrl = new URL(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login`);
+    redirectUrl.searchParams.set('token', localToken);
+    redirectUrl.searchParams.set('user', JSON.stringify({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      defaultAvatar: user.defaultAvatar || '',
+      theme: user.theme,
+      notifications: user.notifications,
+      focusTime: user.focusTime || 0,
+      focusSessions: user.focusSessions || 0,
+    }));
+
+    res.redirect(redirectUrl.toString());
+  } catch (err) {
+    console.error('Google callback redirect error:', err);
+    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=server_error`);
+  }
+};

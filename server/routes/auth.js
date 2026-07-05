@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { register, login, getMe, updateProfile, changePassword, forgotPassword, resetPassword, googleLogin } = require('../controllers/authController');
+const { register, login, getMe, updateProfile, changePassword, forgotPassword, resetPassword, googleLogin, googleCallback } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -17,6 +17,9 @@ router.post('/login', [
 ], login);
 
 router.post('/google-login', googleLogin);
+router.post('/google', googleLogin);
+router.post('/google/callback', googleCallback);
+router.get('/google/callback', googleCallback);
 
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
