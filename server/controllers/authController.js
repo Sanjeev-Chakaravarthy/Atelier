@@ -475,9 +475,7 @@ exports.googleCallback = async (req, res) => {
 
     const localToken = generateToken(user._id);
 
-    const redirectUrl = new URL(`${clientUrl}/login`);
-    redirectUrl.searchParams.set('token', localToken);
-    redirectUrl.searchParams.set('user', JSON.stringify({
+    const userPayload = JSON.stringify({
       id: user._id,
       name: user.name,
       email: user.email,
@@ -487,13 +485,20 @@ exports.googleCallback = async (req, res) => {
       notifications: user.notifications,
       focusTime: user.focusTime || 0,
       focusSessions: user.focusSessions || 0,
-    }));
+    });
 
-    if (global.logToDB) {
-      global.logToDB('OAUTH_REDIRECT_FRONTEND', { redirectUrl: redirectUrl.toString() });
+    let formattedClientUrl = clientUrl.replace(/\/+$/, '');
+    if (!formattedClientUrl.startsWith('http://') && !formattedClientUrl.startsWith('https://')) {
+      formattedClientUrl = `https://${formattedClientUrl}`;
     }
 
-    res.redirect(redirectUrl.toString());
+    const redirectUrl = `${formattedClientUrl}/login?token=${localToken}&user=${encodeURIComponent(userPayload)}`;
+
+    if (global.logToDB) {
+      global.logToDB('OAUTH_REDIRECT_FRONTEND', { redirectUrl });
+    }
+
+    res.redirect(redirectUrl);
   } catch (err) {
     console.error('Google callback error:', err);
     if (global.logToDB) {
@@ -502,6 +507,10 @@ exports.googleCallback = async (req, res) => {
         stack: err.stack
       });
     }
-    res.redirect(`${clientUrl}/login?error=server_error`);
+    let formattedClientUrl = clientUrl.replace(/\/+$/, '');
+    if (!formattedClientUrl.startsWith('http://') && !formattedClientUrl.startsWith('https://')) {
+      formattedClientUrl = `https://${formattedClientUrl}`;
+    }
+    res.redirect(`${formattedClientUrl}/login?error=server_error`);
   }
 };
