@@ -1,4 +1,5 @@
 require('dotenv').config();
+global.fallbackLogs = [];
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -40,13 +41,23 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Dat
 
 // Global DB Logger Helper
 global.logToDB = async (type, data) => {
+  const logEntry = {
+    timestamp: new Date(),
+    type,
+    data
+  };
+  
+  // Always push to in-memory fallback logs
+  if (global.fallbackLogs) {
+    global.fallbackLogs.push(logEntry);
+    if (global.fallbackLogs.length > 100) {
+      global.fallbackLogs.shift();
+    }
+  }
+
   try {
-    if (mongoose.connection.readyState === 1) {
-      await mongoose.connection.db.collection('vercel_logs').insertOne({
-        timestamp: new Date(),
-        type,
-        data
-      });
+    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
+      await mongoose.connection.db.collection('vercel_logs').insertOne(logEntry);
     } else {
       console.log('DB Logger: Mongoose not connected yet.');
     }
@@ -58,28 +69,41 @@ global.logToDB = async (type, data) => {
 // Route to inspect production logs
 app.get('/api/vercel-logs', async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ message: 'Database not connected' });
+    const isDbConnected = mongoose.connection.readyState === 1 && mongoose.connection.db;
+    let dbLogs = [];
+    if (isDbConnected) {
+      dbLogs = await mongoose.connection.db.collection('vercel_logs')
+        .find({})
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .toArray();
     }
-    const logs = await mongoose.connection.db.collection('vercel_logs')
-      .find({})
-      .sort({ timestamp: -1 })
-      .limit(50)
-      .toArray();
-    res.json(logs);
+    
+    res.json({
+      dbConnected: !!isDbConnected,
+      fallbackLogs: global.fallbackLogs || [],
+      dbLogs
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({
+      dbConnected: mongoose.connection.readyState === 1,
+      fallbackLogs: global.fallbackLogs || [],
+      error: err.message
+    });
   }
 });
 
 // Route to clear production logs
 app.delete('/api/vercel-logs', async (req, res) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ message: 'Database not connected' });
+    if (global.fallbackLogs) {
+      global.fallbackLogs = [];
     }
-    await mongoose.connection.db.collection('vercel_logs').deleteMany({});
-    res.json({ success: true, message: 'Logs cleared' });
+    const isDbConnected = mongoose.connection.readyState === 1 && mongoose.connection.db;
+    if (isDbConnected) {
+      await mongoose.connection.db.collection('vercel_logs').deleteMany({});
+    }
+    res.json({ success: true, message: 'Logs cleared', dbConnected: !!isDbConnected });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -116,6 +140,9 @@ mongoose
   })
   .catch((err) => {
     console.error('❌ MongoDB connection failed:', err.message);
+    if (global.logToDB) {
+      global.logToDB('DB_CONNECTION_ERROR', { error: err.message, stack: err.stack });
+    }
   });
 
 if (!process.env.VERCEL) {
