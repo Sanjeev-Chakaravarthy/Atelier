@@ -3,7 +3,7 @@ const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
-const axios = require('axios');
+const https = require('https');
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
@@ -338,24 +338,53 @@ exports.googleCallback = async (req, res) => {
     const protocol = req.get('x-forwarded-proto') || req.protocol;
     const callbackUrl = `${protocol}://${req.get('host')}/api/auth/google/callback`;
 
-    // Exchange authorization code for tokens using axios
-    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', 
-      new URLSearchParams({
-        code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: callbackUrl,
-        grant_type: 'authorization_code',
-      }).toString(),
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      }
-    );
+    // Exchange authorization code for tokens using native https module
+    const postData = new URLSearchParams({
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: callbackUrl,
+      grant_type: 'authorization_code',
+    }).toString();
 
-    const tokenData = tokenResponse.data;
+    console.log('Exchanging code for token with data length:', postData.length);
+
+    const tokenData = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'oauth2.googleapis.com',
+        path: '/token',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const reqPost = https.request(options, (resPost) => {
+        let rawData = '';
+        resPost.on('data', (chunk) => { rawData += chunk; });
+        resPost.on('end', () => {
+          try {
+            const parsed = JSON.parse(rawData);
+            resolve(parsed);
+          } catch (e) {
+            reject(new Error('Failed to parse Google token JSON: ' + rawData));
+          }
+        });
+      });
+
+      reqPost.on('error', (err) => {
+        reject(err);
+      });
+
+      reqPost.write(postData);
+      reqPost.end();
+    });
+
+    console.log('Google token response received. Keys:', Object.keys(tokenData));
 
     if (tokenData.error) {
-      console.error('Google token exchange error:', tokenData);
+      console.error('Google token exchange error payload:', tokenData);
       return res.redirect(`${clientUrl}/login?error=token_exchange_failed`);
     }
 
