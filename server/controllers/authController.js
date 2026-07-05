@@ -309,6 +309,15 @@ exports.googleRedirect = (req, res) => {
   const protocol = req.get('x-forwarded-proto') || req.protocol;
   const callbackUrl = `${protocol}://${req.get('host')}/api/auth/google/callback`;
   
+  if (global.logToDB) {
+    global.logToDB('OAUTH_REDIRECT_START', {
+      clientId: clientId ? `${clientId.slice(0, 15)}...` : 'undefined',
+      protocol,
+      host: req.get('host'),
+      callbackUrl
+    });
+  }
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: callbackUrl,
@@ -328,10 +337,21 @@ exports.googleRedirect = (req, res) => {
 exports.googleCallback = async (req, res) => {
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
+  if (global.logToDB) {
+    global.logToDB('OAUTH_CALLBACK_START', {
+      queryKeys: Object.keys(req.query),
+      hasCode: !!req.query.code,
+      clientUrl
+    });
+  }
+
   try {
     const { code } = req.query;
     if (!code) {
       console.error('Google callback: no authorization code received');
+      if (global.logToDB) {
+        global.logToDB('OAUTH_CALLBACK_ERROR', { error: 'No authorization code in query params' });
+      }
       return res.redirect(`${clientUrl}/login?error=no_code`);
     }
 
@@ -346,6 +366,14 @@ exports.googleCallback = async (req, res) => {
       redirect_uri: callbackUrl,
       grant_type: 'authorization_code',
     }).toString();
+
+    if (global.logToDB) {
+      global.logToDB('OAUTH_TOKEN_EXCHANGE_PREPARE', {
+        callbackUrl,
+        clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.slice(0, 15)}...` : 'undefined',
+        hasSecret: !!process.env.GOOGLE_CLIENT_SECRET
+      });
+    }
 
     console.log('Exchanging code for token with data length:', postData.length);
 
@@ -383,6 +411,15 @@ exports.googleCallback = async (req, res) => {
 
     console.log('Google token response received. Keys:', Object.keys(tokenData));
 
+    if (global.logToDB) {
+      global.logToDB('OAUTH_TOKEN_EXCHANGE_RESULT', {
+        success: !tokenData.error,
+        keys: Object.keys(tokenData),
+        error: tokenData.error || null,
+        error_description: tokenData.error_description || null
+      });
+    }
+
     if (tokenData.error) {
       console.error('Google token exchange error payload:', tokenData);
       return res.redirect(`${clientUrl}/login?error=token_exchange_failed`);
@@ -390,6 +427,14 @@ exports.googleCallback = async (req, res) => {
 
     // Decode the id_token to get user info
     const payload = jwt.decode(tokenData.id_token);
+    if (global.logToDB) {
+      global.logToDB('OAUTH_ID_TOKEN_DECODED', {
+        hasPayload: !!payload,
+        email: payload ? payload.email : null,
+        name: payload ? payload.name : null
+      });
+    }
+
     if (!payload || !payload.email) {
       console.error('Google callback: invalid id_token payload');
       return res.redirect(`${clientUrl}/login?error=invalid_token`);
@@ -407,6 +452,9 @@ exports.googleCallback = async (req, res) => {
         defaultAvatar: payload.picture || '',
         password: randomPassword,
       });
+      if (global.logToDB) {
+        global.logToDB('OAUTH_USER_CREATED', { email: user.email, id: user._id });
+      }
     } else {
       let isModified = false;
       if (!user.avatar && payload.picture) {
@@ -419,6 +467,9 @@ exports.googleCallback = async (req, res) => {
       }
       if (isModified) {
         await user.save();
+      }
+      if (global.logToDB) {
+        global.logToDB('OAUTH_USER_LOGGED_IN', { email: user.email, id: user._id });
       }
     }
 
@@ -438,9 +489,19 @@ exports.googleCallback = async (req, res) => {
       focusSessions: user.focusSessions || 0,
     }));
 
+    if (global.logToDB) {
+      global.logToDB('OAUTH_REDIRECT_FRONTEND', { redirectUrl: redirectUrl.toString() });
+    }
+
     res.redirect(redirectUrl.toString());
   } catch (err) {
     console.error('Google callback error:', err);
+    if (global.logToDB) {
+      global.logToDB('OAUTH_CALLBACK_EXCEPTION', {
+        message: err.message,
+        stack: err.stack
+      });
+    }
     res.redirect(`${clientUrl}/login?error=server_error`);
   }
 };

@@ -39,9 +39,64 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Dat
 // 404 handler
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
 
+// Global DB Logger Helper
+global.logToDB = async (type, data) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.db.collection('vercel_logs').insertOne({
+        timestamp: new Date(),
+        type,
+        data
+      });
+    } else {
+      console.log('DB Logger: Mongoose not connected yet.');
+    }
+  } catch (e) {
+    console.error('Failed to log to DB:', e);
+  }
+};
+
+// Route to inspect production logs
+app.get('/api/vercel-logs', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ message: 'Database not connected' });
+    }
+    const logs = await mongoose.connection.db.collection('vercel_logs')
+      .find({})
+      .sort({ timestamp: -1 })
+      .limit(50)
+      .toArray();
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Route to clear production logs
+app.delete('/api/vercel-logs', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ message: 'Database not connected' });
+    }
+    await mongoose.connection.db.collection('vercel_logs').deleteMany({});
+    res.json({ success: true, message: 'Logs cleared' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  if (global.logToDB) {
+    global.logToDB('EXPRESS_ERROR', {
+      message: err.message,
+      stack: err.stack,
+      url: req.originalUrl,
+      method: req.method
+    });
+  }
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
 });
 
@@ -53,6 +108,9 @@ mongoose
   .connect(MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
+    if (global.logToDB) {
+      global.logToDB('SERVER_STARTUP', { message: 'Server started and MongoDB connected successfully.' });
+    }
   })
   .catch((err) => {
     console.error('❌ MongoDB connection failed:', err.message);
