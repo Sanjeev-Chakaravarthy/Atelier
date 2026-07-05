@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
+const axios = require('axios');
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
@@ -337,20 +338,21 @@ exports.googleCallback = async (req, res) => {
     const protocol = req.get('x-forwarded-proto') || req.protocol;
     const callbackUrl = `${protocol}://${req.get('host')}/api/auth/google/callback`;
 
-    // Exchange authorization code for tokens
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
+    // Exchange authorization code for tokens using axios
+    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', 
+      new URLSearchParams({
         code,
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         redirect_uri: callbackUrl,
         grant_type: 'authorization_code',
       }).toString(),
-    });
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = tokenResponse.data;
 
     if (tokenData.error) {
       console.error('Google token exchange error:', tokenData);
