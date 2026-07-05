@@ -33,11 +33,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date() }));
 
-// 404 handler
-app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
 
 // Global DB Logger Helper
 global.logToDB = async (type, data) => {
@@ -85,6 +84,9 @@ app.delete('/api/vercel-logs', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// 404 handler
+app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
 
 // Error handler
 app.use((err, req, res, next) => {
